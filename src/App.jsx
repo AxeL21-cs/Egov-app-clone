@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  AlertCircle,
   BadgeCheck,
   BookOpen,
   Bot,
