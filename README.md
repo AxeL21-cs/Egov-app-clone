@@ -1,6 +1,30 @@
-# eGovPH webapp prototype
+# eAbot
 
-A responsive React/Vite prototype inspired by the supplied eGovPH mobile dashboard reference.
+**Hanapin. Gabayan. Iabot.**
+
+eAbot is a standalone, mobile-first government journey guide created for the DICT eGov Hackathon. It helps citizens discover benefits they may not know about, understand government requirements in the correct order, and reach a service hub only when they are ready.
+
+This implementation is a functional hackathon prototype with synthetic citizen data. It is not connected to eGovPH, DSWD, ARTA, PSA, any Serbisyo Hub, or another government system.
+
+## Included demo journey
+
+- Three-step trust onboarding with an explicit benefit-matching consent screen
+- Proactive Social Pension match for the synthetic citizen “Rosa Villanueva”
+- Deterministic five-check readiness journey that moves from 60% to 100%
+- “Huwag Mo Akong Pabalikin” pre-visit check
+- Human-confirmed Serbisyo Hub appointment request simulation
+- Goal-based service search and Taglish eAbot assistant
+- Evidence-backed complaint preview generated from the demo journey
+- Easy Mode, read-aloud, voice-input fallback, keyboard support, and responsive layouts
+- Local persistence for non-sensitive demo progress
+
+## Trust boundaries
+
+- All identities, rules, documents, fees, appointments, messages, and complaint references are illustrative.
+- The assistant explains a fixed demo knowledge base; deterministic rules control eligibility and readiness.
+- “Possible match” does not mean eligible or approved.
+- “100% ready” means ready to request a visit, not approved for a benefit.
+- No real PSN, government password, payment credential, or document should be entered.
 
 ## Run locally
 
@@ -9,17 +33,26 @@ npm install
 npm run dev
 ```
 
-Then open the local URL printed by Vite. The prototype includes functional search and filtering, category shortcuts, an announcement carousel, service detail sheets, demo QR scanning, a digital ID preview, local transaction history, and account preferences.
+Open the local URL shown by Vite and select **Simulan ang guided demo**.
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
 
 ## Deploy to Vercel
 
-The project includes a `vercel.json` and is ready for Vercel's Vite preset.
+The repository contains a `vercel.json` configured for Vite.
 
-1. Push this folder to a GitHub repository.
-2. In Vercel, choose **Add New → Project** and import the repository.
-3. If this folder is inside a larger repository, set **Root Directory** to `outputs/egovph-webapp`.
-4. Deploy. Vercel will run `npm run build` and publish the `dist` directory.
+1. Import the GitHub repository into Vercel.
+2. Keep the detected framework as **Vite**.
+3. Use `npm run build` and the `dist` output directory.
+4. Deploy.
 
-You can also deploy from this directory with `npx vercel` after signing in.
+Future authorized government integrations should be implemented through server-side adapters or Vercel Functions. Never expose integration credentials in Vite client code.
 
-> This is an independent UI prototype. It does not connect to Philippine government systems and should not be used for real identity or service transactions.
+## Product direction
+
+eAbot is intentionally standalone today. Its adapter boundary is designed so an authorized future integration could replace demo identity, messaging, payment, reporting, and scheduling services without rebuilding the citizen-facing Discover and Journey experiences.

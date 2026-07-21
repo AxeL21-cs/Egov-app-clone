@@ -1,17 +1,17 @@
 {
-  "name": "eGovPH Web Prototype",
-  "short_name": "eGovPH",
-  "description": "A responsive public services dashboard prototype.",
+  "name": "eAbot — Government Journey Guide",
+  "short_name": "eAbot",
+  "description": "Discover benefits, prepare government requirements, and arrive ready.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f4f7fd",
   "theme_color": "#064ed8",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

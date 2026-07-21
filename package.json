@@ -1,7 +1,7 @@
 {
-  "name": "egovph-webapp",
+  "name": "eabot-webapp",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,15 +10,15 @@
     "vercel-build": "vite build"
   },
   "dependencies": {
-    "react": "latest",
-    "react-dom": "latest",
-    "lucide-react": "latest"
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "lucide-react": "1.25.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest"
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.5"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   }
 }
