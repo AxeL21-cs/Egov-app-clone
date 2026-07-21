@@ -10,9 +10,10 @@
     "vercel-build": "vite build"
   },
   "dependencies": {
+    "@xyflow/react": "^12.11.2",
+    "lucide-react": "1.25.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "lucide-react": "1.25.0"
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.3",

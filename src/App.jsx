@@ -23,8 +23,10 @@ import {
   Home,
   Info,
   Landmark,
+  ListChecks,
   LockKeyhole,
   MapPin,
+  Network,
   QrCode,
   RotateCcw,
   School,
@@ -35,6 +37,7 @@ import {
   UserRound,
   WalletCards,
 } from 'lucide-react';
+import RequirementGraph from './components/RequirementGraph';
 
 const PROFILE = {
   name: 'Mika Reyes',
@@ -230,6 +233,7 @@ const DEFAULT_STATE = {
   birthRequest: 'not-started',
   selectedIncome: '',
   receipt: null,
+  checklistView: 'graph',
 };
 
 function safeRead() {
@@ -495,6 +499,15 @@ function RequirementStatus({ status }) {
   return <span className={`requirement-status ${status}`}><Icon />{config.label}</span>;
 }
 
+function JourneyAside({ program, isBpms }) {
+  return (
+    <aside className="journey-aside">
+      <div className="source-card"><ShieldCheck /><div><strong>Official-source map</strong><p>The prototype organizes published requirements. Agencies can still request validation or updated documents.</p><a href={program.source} target="_blank" rel="noreferrer">Open {program.sourceLabel}<ExternalLink /></a></div></div>
+      {isBpms && <div className="conditional-card"><Info /><div><strong>Conditional documents</strong><p>Top-five, PWD, Solo Parent, Indigenous Peoples, first-generation, and other equity proofs only appear when relevant.</p></div></div>}
+    </aside>
+  );
+}
+
 function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
   const program = PROGRAMS.find((item) => item.id === state.selectedProgram) || PROGRAMS[0];
   const isBpms = program.id === 'bpms';
@@ -511,9 +524,11 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
   const progress = Math.round((completedCount / Math.max(coreRequirements.length, 1)) * 100);
   const next = requirements.find((item) => item.status === 'available');
   const ProgramIcon = program.icon;
+  const checklistView = state.checklistView === 'list' ? 'list' : 'graph';
 
   const handleRequirement = (requirement) => {
     if (requirement.status !== 'available') return;
+    if (requirement.method === 'income' && !state.selectedIncome) return;
     if (requirement.method === 'assisted') {
       setState((current) => ({ ...current, complete: [...new Set([...current.complete, requirement.id])] }));
       return;
@@ -536,58 +551,80 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
       </section>
 
       {next ? (
-        <button className="next-action-card" onClick={() => handleRequirement(next)}>
-          <span><ArrowRight /></span><div><small>NEXT AVAILABLE STEP</small><strong>{next.title}</strong><p>{next.detail}</p></div><ChevronRight />
-        </button>
+        <div className="next-action-stack">
+          <button className="next-action-card" disabled={next.method === 'income' && !state.selectedIncome} onClick={() => handleRequirement(next)}>
+            <span><ArrowRight /></span><div><small>NEXT AVAILABLE STEP</small><strong>{next.title}</strong><p>{next.detail}</p></div><ChevronRight />
+          </button>
+          {next.method === 'income' && (
+            <label className="next-branch-picker">
+              <span><ChevronDown />Choose one accepted income document</span>
+              <select value={state.selectedIncome} onChange={(event) => setState((current) => ({ ...current, selectedIncome: event.target.value }))}>
+                <option value="">Select a document path</option>
+                {INCOME_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.title}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
       ) : completedCount === coreRequirements.length ? (
         <div className="success-strip"><CheckCircle2 /><div><strong>Your file is organized.</strong><span>Final eligibility and acceptance still come from {program.agency}.</span></div></div>
       ) : null}
 
-      <div className="requirements-layout">
-        <section className="requirement-panel">
-          <div className="panel-heading"><div><span className="section-kicker">BRANCHING CHECKLIST</span><h2>What you need</h2></div><span>{requirements.length} groups</span></div>
-          <p className="panel-intro">You do not have to get everything at once. eAbot unlocks the next sensible action.</p>
-          <ol className="requirement-list">
-            {requirements.map((requirement, index) => {
-              const Icon = requirement.icon;
-              return (
-                <li key={requirement.id} className={`requirement-row ${requirement.status}`}>
-                  <span className="requirement-number">{requirement.status === 'complete' ? <Check /> : index + 1}</span>
-                  <span className="requirement-icon"><Icon /></span>
-                  <div className="requirement-copy">
-                    <div><strong>{requirement.title}</strong><RequirementStatus status={requirement.status} /></div>
-                    <p>{requirement.detail}</p>
-                    <span className="document-source">From: {requirement.source}</span>
-                    {requirement.status === 'locked' && <span className="locked-note"><LockKeyhole />{requirement.lockedBy}</span>}
-                    {requirement.method === 'income' && requirement.status === 'available' && (
-                      <label className="branch-picker">
-                        <span><ChevronDown /> Choose one accepted path</span>
-                        <select value={state.selectedIncome} onChange={(event) => setState((current) => ({ ...current, selectedIncome: event.target.value }))}>
-                          <option value="">Select a document</option>
-                          {INCOME_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.title}</option>)}
-                        </select>
-                      </label>
-                    )}
-                    {requirement.status === 'processing' && requirement.id === 'bpms-birth' && (
-                      <div className="processing-detail"><span><Check /> Request and payment complete</span><button onClick={() => setState((current) => ({ ...current, complete: [...new Set([...current.complete, 'bpms-birth'])] }))}>Mark as issued</button></div>
-                    )}
-                  </div>
-                  {requirement.status === 'available' && (
-                    <button className="row-action" disabled={requirement.method === 'income' && !state.selectedIncome} onClick={() => handleRequirement(requirement)}>
-                      {requirement.method === 'egov' ? 'Request through eGov' : requirement.method === 'assisted' ? 'View instructions' : 'Add document'}<ChevronRight />
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-
-        <aside className="journey-aside">
-          <div className="source-card"><ShieldCheck /><div><strong>Official-source map</strong><p>The prototype organizes published requirements. Agencies can still request validation or updated documents.</p><a href={program.source} target="_blank" rel="noreferrer">Open {program.sourceLabel}<ExternalLink /></a></div></div>
-          {isBpms && <div className="conditional-card"><Info /><div><strong>Conditional documents</strong><p>Top-five, PWD, Solo Parent, Indigenous Peoples, first-generation, and other equity proofs only appear when relevant.</p></div></div>}
-        </aside>
+      <div className="checklist-viewbar">
+        <div><span className="section-kicker">CHECKLIST VIEW</span><strong>See how every step connects</strong></div>
+        <div className="checklist-view-switch" role="group" aria-label="Choose checklist view">
+          <button type="button" className={checklistView === 'graph' ? 'active' : ''} aria-pressed={checklistView === 'graph'} onClick={() => setState((current) => ({ ...current, checklistView: 'graph' }))}><Network />Graph</button>
+          <button type="button" className={checklistView === 'list' ? 'active' : ''} aria-pressed={checklistView === 'list'} onClick={() => setState((current) => ({ ...current, checklistView: 'list' }))}><ListChecks />List</button>
+        </div>
       </div>
+
+      {checklistView === 'graph' ? (
+        <div className="requirements-layout graph-layout">
+          <RequirementGraph requirements={requirements} program={program} onOpen={handleRequirement} selectedIncome={state.selectedIncome} />
+          <JourneyAside program={program} isBpms={isBpms} />
+        </div>
+      ) : (
+        <div className="requirements-layout">
+          <section className="requirement-panel">
+            <div className="panel-heading"><div><span className="section-kicker">BRANCHING CHECKLIST</span><h2>What you need</h2></div><span>{requirements.length} groups</span></div>
+            <p className="panel-intro">You do not have to get everything at once. eAbot unlocks the next sensible action.</p>
+            <ol className="requirement-list">
+              {requirements.map((requirement, index) => {
+                const Icon = requirement.icon;
+                return (
+                  <li key={requirement.id} className={`requirement-row ${requirement.status}`}>
+                    <span className="requirement-number">{requirement.status === 'complete' ? <Check /> : index + 1}</span>
+                    <span className="requirement-icon"><Icon /></span>
+                    <div className="requirement-copy">
+                      <div><strong>{requirement.title}</strong><RequirementStatus status={requirement.status} /></div>
+                      <p>{requirement.detail}</p>
+                      <span className="document-source">From: {requirement.source}</span>
+                      {requirement.status === 'locked' && <span className="locked-note"><LockKeyhole />{requirement.lockedBy}</span>}
+                      {requirement.method === 'income' && requirement.status === 'available' && (
+                        <label className="branch-picker">
+                          <span><ChevronDown /> Choose one accepted path</span>
+                          <select value={state.selectedIncome} onChange={(event) => setState((current) => ({ ...current, selectedIncome: event.target.value }))}>
+                            <option value="">Select a document</option>
+                            {INCOME_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.title}</option>)}
+                          </select>
+                        </label>
+                      )}
+                      {requirement.status === 'processing' && requirement.id === 'bpms-birth' && (
+                        <div className="processing-detail"><span><Check /> Request and payment complete</span><button onClick={() => setState((current) => ({ ...current, complete: [...new Set([...current.complete, 'bpms-birth'])] }))}>Mark as issued</button></div>
+                      )}
+                    </div>
+                    {requirement.status === 'available' && (
+                      <button className="row-action" disabled={requirement.method === 'income' && !state.selectedIncome} onClick={() => handleRequirement(requirement)}>
+                        {requirement.method === 'egov' ? 'Request through eGov' : requirement.method === 'assisted' ? 'View instructions' : 'Add document'}<ChevronRight />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+          <JourneyAside program={program} isBpms={isBpms} />
+        </div>
+      )}
       <BottomNavigation active="documents" onNavigate={onNavigate} />
     </main>
   );
