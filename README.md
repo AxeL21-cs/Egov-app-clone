@@ -1,30 +1,48 @@
 # eAbot
 
-**Hanapin. Gabayan. Iabot.**
+eAbot is a standalone, mobile-first opportunity and document-readiness webapp for the DICT eGov Hackathon. The demo follows Mika, a fictional 18-year-old incoming college freshman, as they discover government education support and turn complex requirements into a clear next-action plan.
 
-eAbot is a standalone, mobile-first government journey guide created for the DICT eGov Hackathon. It helps citizens discover benefits they may not know about, understand government requirements in the correct order, and reach a service hub only when they are ready.
+The interface is inspired by the soft, airy component grammar of eGovPH while using original eAbot branding, content, and illustrations. It is a React/Vite webapp designed for Vercel—not a native mobile app or an eGovPH clone.
 
-This implementation is a functional hackathon prototype with synthetic citizen data. It is not connected to eGovPH, DSWD, ARTA, PSA, any Serbisyo Hub, or another government system.
+## Guided demo
 
-## Included demo journey
+The primary judge path includes:
 
-- Three-step trust onboarding with an explicit benefit-matching consent screen
-- Proactive Social Pension match for the synthetic citizen “Rosa Villanueva”
-- Deterministic five-check readiness journey that moves from 60% to 100%
-- “Huwag Mo Akong Pabalikin” pre-visit check
-- Human-confirmed Serbisyo Hub appointment request simulation
-- Goal-based service search and Taglish eAbot assistant
-- Evidence-backed complaint preview generated from the demo journey
-- Easy Mode, read-aloud, voice-input fallback, keyboard support, and responsive layouts
-- Local persistence for non-sensitive demo progress
+1. Discover three distinct education-support pathways.
+2. Select the current CHED merit-readiness path.
+3. Review a dependency-aware document checklist.
+4. Request a supporting PSA birth certificate through a mocked future eGov connection.
+5. Complete a visibly non-functional mock QR payment.
+6. Receive a mock receipt.
+7. Return to the checklist with the request marked processing and the next school document unlocked.
+8. Choose one of several accepted income-document branches.
 
-## Trust boundaries
+TES is correctly represented as a school-mediated path that generally becomes actionable after enrollment. DSWD AICS Educational Assistance is represented as crisis assistance subject to social-worker assessment, not as a scholarship.
 
-- All identities, rules, documents, fees, appointments, messages, and complaint references are illustrative.
-- The assistant explains a fixed demo knowledge base; deterministic rules control eligibility and readiness.
-- “Possible match” does not mean eligible or approved.
-- “100% ready” means ready to request a visit, not approved for a benefit.
-- No real PSN, government password, payment credential, or document should be entered.
+## Safety boundaries
+
+- Every identity, match, upload, fee, QR, payment, receipt, and transaction reference is synthetic.
+- Possible matches are not eligibility decisions or approvals.
+- The scholarship payment shown is for a separately requested supporting document; eAbot never presents a scholarship application fee.
+- The QR is non-functional and marked `DEMO — DO NOT PAY`.
+- The prototype does not accept real documents, IDs, payment credentials, or account information.
+- Government, school, receipt, and document-service APIs remain mocked; eGovPay is restricted to test-mode transactions.
+- Published requirements and availability can change; the responsible agency or school remains authoritative.
+
+## eGovPay test integration
+
+The payment screen can create a hosted eGovPay **test-mode** transaction for the fixed ₱155 demo document request and query its transaction status. The server rejects any API key that does not start with `test_`. The user may always continue the guided demo without paying.
+
+Required server-side environment variables:
+
+```env
+EGOVPAY_API_BASE_URL=
+EGOVPAY_API_KEY=test_...
+EGOVPAY_SETTLEMENT_TEMPLATE_UUID=
+EGOVPAY_APP_URL=
+```
+
+`EGOVPAY_APP_URL` should be the deployed Vercel origin when callbacks need to be publicly reachable. These values are used only by `/api/egovpay/*` and must never be renamed with the `VITE_` prefix.
 
 ## Run locally
 
@@ -32,8 +50,6 @@ This implementation is a functional hackathon prototype with synthetic citizen d
 npm install
 npm run dev
 ```
-
-Open the local URL shown by Vite and select **Simulan ang guided demo**.
 
 ## Build
 
@@ -44,15 +60,16 @@ npm run preview
 
 ## Deploy to Vercel
 
-The repository contains a `vercel.json` configured for Vite.
+The repository includes a Vite-ready `vercel.json`.
 
 1. Import the GitHub repository into Vercel.
 2. Keep the detected framework as **Vite**.
-3. Use `npm run build` and the `dist` output directory.
-4. Deploy.
+3. Use `npm run build`.
+4. Use `dist` as the output directory.
+5. Deploy.
 
-Future authorized government integrations should be implemented through server-side adapters or Vercel Functions. Never expose integration credentials in Vite client code.
+Future authorized integrations should use server-side adapters or Vercel Functions. Never expose government-integration credentials in Vite client code.
 
-## Product direction
+## Design specification
 
-eAbot is intentionally standalone today. Its adapter boundary is designed so an authorized future integration could replace demo identity, messaging, payment, reporting, and scheduling services without rebuilding the citizen-facing Discover and Journey experiences.
+The active interface contract is in [`docs/eAbot_Visual_Design.md`](docs/eAbot_Visual_Design.md).
