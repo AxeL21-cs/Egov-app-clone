@@ -1,11 +1,11 @@
 {
-  "name": "eAbot — Government Journey Guide",
+  "name": "eAbot — Opportunity & Document Guide",
   "short_name": "eAbot",
-  "description": "Discover benefits, prepare government requirements, and arrive ready.",
+  "description": "Discover education opportunities and prepare government document requirements in the right order.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f7fd",
-  "theme_color": "#064ed8",
+  "background_color": "#ffffff",
+  "theme_color": "#0753da",
   "icons": [
     {
       "src": "/favicon.svg",
