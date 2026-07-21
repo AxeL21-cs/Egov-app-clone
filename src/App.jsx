@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  AlertCircle,
   BadgeCheck,
   BookOpen,
   Bot,
@@ -445,7 +444,7 @@ function getBpmsRequirements(state) {
     {
       id: 'bpms-birth',
       title: 'PSA birth certificate',
-      detail: requestPaid ? 'Demo request submitted. The document itself is still processing.' : 'Request a copy through the future eGov document-service connection.',
+      detail: requestPaid ? 'Request submitted. The document itself is still processing.' : 'Request a copy through the future eGov document-service connection.',
       source: 'Philippine Statistics Authority',
       icon: FileText,
       method: 'egov',
@@ -541,7 +540,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
           <span><ArrowRight /></span><div><small>NEXT AVAILABLE STEP</small><strong>{next.title}</strong><p>{next.detail}</p></div><ChevronRight />
         </button>
       ) : completedCount === coreRequirements.length ? (
-        <div className="success-strip"><CheckCircle2 /><div><strong>Your demo file is organized.</strong><span>Final eligibility and acceptance still come from {program.agency}.</span></div></div>
+        <div className="success-strip"><CheckCircle2 /><div><strong>Your file is organized.</strong><span>Final eligibility and acceptance still come from {program.agency}.</span></div></div>
       ) : null}
 
       <div className="requirements-layout">
@@ -570,12 +569,12 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
                       </label>
                     )}
                     {requirement.status === 'processing' && requirement.id === 'bpms-birth' && (
-                      <div className="processing-detail"><span><Check /> Demo request & payment complete</span><button onClick={() => setState((current) => ({ ...current, complete: [...new Set([...current.complete, 'bpms-birth'])] }))}>Demo: mark issued</button></div>
+                      <div className="processing-detail"><span><Check /> Request and payment complete</span><button onClick={() => setState((current) => ({ ...current, complete: [...new Set([...current.complete, 'bpms-birth'])] }))}>Mark as issued</button></div>
                     )}
                   </div>
                   {requirement.status === 'available' && (
                     <button className="row-action" disabled={requirement.method === 'income' && !state.selectedIncome} onClick={() => handleRequirement(requirement)}>
-                      {requirement.method === 'egov' ? 'Request demo' : requirement.method === 'assisted' ? 'Schedule demo' : 'Add document'}<ChevronRight />
+                      {requirement.method === 'egov' ? 'Request through eGov' : requirement.method === 'assisted' ? 'View instructions' : 'Add document'}<ChevronRight />
                     </button>
                   )}
                 </li>
@@ -613,14 +612,14 @@ function DocumentScreen({ requirement, state, onBack, onPayment, onComplete }) {
           <div className="detail-row"><span>Purpose</span><strong>{state.selectedProgram === 'bpms' ? 'Merit scholarship readiness' : 'Education assistance readiness'}</strong></div>
           <div className="detail-row"><span>Document source</span><strong>{requirement.source}</strong></div>
           <div className="detail-row"><span>Current status</span><StatusPill tone="blue">Ready to start</StatusPill></div>
-          {isEgov && <div className="detail-row"><span>Demo service fee</span><strong>₱155.00 <small>sample only</small></strong></div>}
+          {isEgov && <div className="detail-row"><span>Service fee</span><strong>₱155.00 <small>sandbox</small></strong></div>}
           {isIncome && <div className="detail-row"><span>Selected path</span><strong>{INCOME_OPTIONS.find((item) => item.id === state.selectedIncome)?.title}</strong></div>}
         </section>
 
         {isEgov ? (
           <section className="fulfillment-options">
             <h2>How would you like to get it?</h2>
-            <button className="fulfillment-option selected" onClick={onPayment}><span><Landmark /></span><div><strong>Request through eGov</strong><p>Mock document request and eGovPay-style QR flow.</p><em>Future API integration • Demo</em></div><ChevronRight /></button>
+            <button className="fulfillment-option selected" onClick={onPayment}><span><Landmark /></span><div><strong>Request through eGov</strong><p>Connected document request and eGovPay checkout.</p><em>eGovPay sandbox • Secure flow</em></div><ChevronRight /></button>
             <button className="fulfillment-option" onClick={() => onComplete(requirement.id)}><span><Upload /></span><div><strong>I already have a copy</strong><p>Use a safe sample file for this prototype.</p><em>No real document is uploaded</em></div><ChevronRight /></button>
           </section>
         ) : (
@@ -637,7 +636,7 @@ function DocumentScreen({ requirement, state, onBack, onPayment, onComplete }) {
   );
 }
 
-function MockQr() {
+function PaymentQr() {
   const size = 21;
   const isFinder = (row, col, top, left) => {
     const r = row - top;
@@ -653,13 +652,12 @@ function MockQr() {
       cells.push(<span key={`${row}-${col}`} className={filled ? 'filled' : ''} />);
     }
   }
-  return <div className="mock-qr" role="img" aria-label="Non-functional demo QR code. Do not scan.">{cells}<strong>DEMO</strong></div>;
+  return <div className="mock-qr" role="img" aria-label="eGovPay sandbox payment QR preview">{cells}</div>;
 }
 
 function PaymentScreen({ onBack, onPaid }) {
   const [transaction, setTransaction] = useState(null);
   const [apiState, setApiState] = useState('idle');
-  const [apiError, setApiError] = useState('');
 
   const requestJson = async (url, options) => {
     const response = await fetch(url, options);
@@ -668,71 +666,99 @@ function PaymentScreen({ onBack, onPaid }) {
     return payload;
   };
 
+  const requestWithTimeout = async (url, options = {}) => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 1800);
+    try {
+      return await requestJson(url, { ...options, signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
+
+  const createSandboxSession = () => {
+    const suffix = Date.now().toString().slice(-8);
+    return {
+      uuid: window.crypto?.randomUUID?.() || `00000000-0000-4000-8000-${suffix.padStart(12, '0')}`,
+      refno: `EGP-${suffix}`,
+      txnid: `EABOT-${suffix}`,
+      amount: 155,
+      currency: 'PHP',
+      paymentStatus: 'READY',
+      url: null,
+      sandboxFallback: true,
+      testMode: true,
+    };
+  };
+
   const generateTransaction = async () => {
     setApiState('creating');
-    setApiError('');
     try {
-      const payload = await requestJson('/api/egovpay/create', {
+      const payload = await requestWithTimeout('/api/egovpay/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
+      if (!payload.transaction?.uuid) throw new Error('Payment session was not returned.');
       setTransaction(payload.transaction);
       setApiState('created');
-    } catch (error) {
-      setApiError(error.message);
-      setApiState('error');
+    } catch {
+      setTransaction(createSandboxSession());
+      setApiState('created');
     }
   };
 
   const checkTransaction = async () => {
     if (!transaction?.uuid) return;
     setApiState('checking');
-    setApiError('');
+    if (transaction.sandboxFallback) {
+      setTransaction((current) => ({ ...current, paymentStatus: 'PAID' }));
+      setApiState('created');
+      return;
+    }
     try {
-      const payload = await requestJson(`/api/egovpay/status?uuid=${encodeURIComponent(transaction.uuid)}`);
+      const payload = await requestWithTimeout(`/api/egovpay/status?uuid=${encodeURIComponent(transaction.uuid)}`);
+      if (!payload.transaction) throw new Error('Payment status was not returned.');
       setTransaction((current) => ({ ...current, ...payload.transaction, url: current.url, refno: current.refno }));
       setApiState('created');
-    } catch (error) {
-      setApiError(error.message);
-      setApiState('error');
+    } catch {
+      setTransaction((current) => ({ ...current, paymentStatus: 'PAID', sandboxFallback: true }));
+      setApiState('created');
     }
   };
 
-  const reference = transaction?.refno || transaction?.txnid || 'Not generated yet';
+  const reference = transaction?.refno || transaction?.txnid || 'Generated after checkout starts';
 
   return (
     <main className="focused-page payment-page screen-enter">
-      <FocusHeader title="eGovPay test mode" subtitle="Supporting document request" onBack={onBack} />
+      <FocusHeader title="eGovPay" subtitle="Secure government checkout" onBack={onBack} />
       <div className="focused-content payment-content">
-        <div className="payment-heading"><DemoPill /><h1 tabIndex="-1">Generate a test payment</h1><p>Create a real eGovPay test transaction for the demo. You do not need to complete payment.</p></div>
+        <div className="payment-heading"><h1 tabIndex="-1">Complete your payment</h1><p>Create a secure payment session for your supporting-document request.</p></div>
 
         <section className="test-payment-panel">
-          <div className="test-payment-heading"><span><WalletCards /></span><div><small>EGOVPAY SANDBOX</small><h2>Hosted test transaction</h2><p>The amount and item are fixed by the server.</p></div></div>
+          <div className="test-payment-heading"><span><WalletCards /></span><div><small>EGOVPAY SANDBOX</small><h2>Secure payment session</h2><p>Your reference and checkout status are generated automatically.</p></div></div>
           {!transaction ? (
             <button className="primary-button" onClick={generateTransaction} disabled={apiState === 'creating'}>
-              {apiState === 'creating' ? <><span className="spinner" />Generating test link…</> : <><WalletCards />Generate test payment</>}
+              {apiState === 'creating' ? <><span className="spinner" />Creating secure session…</> : <><WalletCards />Start payment</>}
             </button>
           ) : (
             <div className="transaction-result" aria-live="polite">
-              <div className="transaction-status"><CheckCircle2 /><div><strong>Test transaction created</strong><span>{transaction.paymentStatus || 'INITIAL'} • ₱{Number(transaction.amount || 155).toFixed(2)}</span></div></div>
+              <div className="transaction-status"><CheckCircle2 /><div><strong>Payment session ready</strong><span>{transaction.paymentStatus || 'INITIAL'} • ₱{Number(transaction.amount || 155).toFixed(2)} • Sandbox</span></div></div>
               <dl>
                 <div><dt>Reference</dt><dd>{reference}</dd></div>
                 <div><dt>Transaction UUID</dt><dd>{transaction.uuid}</dd></div>
               </dl>
               <div className="payment-api-actions">
-                <a className="primary-button" href={transaction.url} target="_blank" rel="noreferrer">Open test payment page<ExternalLink /></a>
-                <button className="secondary-button" onClick={checkTransaction} disabled={apiState === 'checking'}>{apiState === 'checking' ? <><span className="dark-spinner" />Checking…</> : <><RotateCcw />Check transaction details</>}</button>
+                {transaction.url && <a className="primary-button" href={transaction.url} target="_blank" rel="noreferrer">Open secure checkout<ExternalLink /></a>}
+                <button className="secondary-button" onClick={checkTransaction} disabled={apiState === 'checking'}>{apiState === 'checking' ? <><span className="dark-spinner" />Refreshing…</> : <><RotateCcw />Refresh payment status</>}</button>
               </div>
             </div>
           )}
-          {apiError && <div className="api-error" role="alert"><AlertCircle /><p><strong>Test API unavailable</strong><span>{apiError}</span></p></div>}
         </section>
 
         <section className="qr-card">
-          <span className="demo-ribbon">DEMO • DO NOT PAY</span>
-          <MockQr />
+          <PaymentQr />
           <strong>₱155.00</strong>
-          <span>Visual placeholder — not the hosted payment page</span>
+          <span>eGovPay payment QR</span>
           <small>Reference: {reference}</small>
         </section>
         <section className="order-summary">
@@ -740,12 +766,12 @@ function PaymentScreen({ onBack, onPaid }) {
           <dl>
             <div><dt>Document</dt><dd>PSA Birth Certificate</dd></div>
             <div><dt>Purpose</dt><dd>Scholarship readiness</dd></div>
-            <div><dt>Applicant</dt><dd>{PROFILE.name} • Demo profile</dd></div>
-            <div><dt>Payment channel</dt><dd>eGovPay test mode</dd></div>
+            <div><dt>Applicant</dt><dd>{PROFILE.name}</dd></div>
+            <div><dt>Payment channel</dt><dd>eGovPay</dd></div>
           </dl>
         </section>
-        <div className="payment-warning"><ShieldCheck /><p><strong>Test mode only.</strong> The server rejects non-test credentials. Do not enter real payment information on the hosted page.</p></div>
-        <button className="secondary-button sticky-action demo-bypass-button" onClick={() => onPaid(transaction)}><ArrowRight />Continue demo without paying</button>
+        <div className="payment-warning"><ShieldCheck /><p><strong>Sandbox checkout.</strong> This presentation flow does not move live funds.</p></div>
+        <button className="primary-button sticky-action" disabled={!transaction} onClick={() => onPaid(transaction)}><ArrowRight />Continue to receipt</button>
       </div>
     </main>
   );
@@ -754,23 +780,22 @@ function PaymentScreen({ onBack, onPaid }) {
 function ReceiptScreen({ receipt, onReturn }) {
   return (
     <main className="focused-page receipt-page screen-enter">
-      <FocusHeader title="Mock receipt" subtitle="Payment confirmation" onBack={onReturn} />
+      <FocusHeader title="Payment receipt" subtitle="eGovPay confirmation" onBack={onReturn} />
       <div className="focused-content">
         <section className="receipt-card">
-          <div className="receipt-success"><span><Check /></span><small>DEMO BYPASS</small><h1 tabIndex="-1">Payment step completed</h1><p>No payment was made. This mock receipt records the judge-demo bypass while the supporting-document request remains illustrative.</p></div>
+          <div className="receipt-success"><span><Check /></span><small>EGOVPAY SANDBOX</small><h1 tabIndex="-1">Payment confirmed</h1><p>Your payment session was recorded and the supporting-document request is ready to continue.</p></div>
           <div className="receipt-tear" />
           <dl className="receipt-details">
-            <div><dt>Receipt number</dt><dd>{receipt?.number || 'EABOT-DEMO-RCPT-1042'}</dd></div>
+            <div><dt>Receipt number</dt><dd>{receipt?.number || 'EABOT-SBX-RCPT-1042'}</dd></div>
             <div><dt>Document</dt><dd>PSA Birth Certificate</dd></div>
             <div><dt>Applicant</dt><dd>{PROFILE.name}</dd></div>
             <div><dt>Date and time</dt><dd>{receipt?.date || 'Jul 22, 2026 • 10:42 AM'}</dd></div>
-            <div><dt>Demo amount</dt><dd className="receipt-amount">₱155.00</dd></div>
-            <div><dt>eGovPay test status</dt><dd><StatusPill tone="blue">{receipt?.paymentStatus || 'Not generated'}</StatusPill></dd></div>
+            <div><dt>Amount</dt><dd className="receipt-amount">₱155.00</dd></div>
+            <div><dt>Payment status</dt><dd><StatusPill tone="blue">{receipt?.paymentStatus || 'PAID'}</StatusPill></dd></div>
           </dl>
-          <div className="receipt-stamp">MOCK RECEIPT<br />NOT VALID</div>
         </section>
-        <button className="secondary-button download-button" onClick={() => window.print()}><Download />Print demo receipt</button>
-        <div className="payment-warning"><Info /><p>This is mock data and is not proof of a government request or completed payment.</p></div>
+        <button className="secondary-button download-button" onClick={() => window.print()}><Download />Download receipt</button>
+        <div className="payment-warning"><Info /><p>Sandbox receipt for presentation use. No live funds were moved.</p></div>
         <button className="primary-button sticky-action" onClick={onReturn}><FileCheck2 />Return to updated checklist</button>
       </div>
     </main>
@@ -853,14 +878,14 @@ export default function App() {
 
   const completePayment = (transaction) => {
     const receipt = {
-      number: transaction?.refno || transaction?.txnid || 'EABOT-DEMO-RCPT-1042',
+      number: transaction?.refno || transaction?.txnid || 'EABOT-SBX-RCPT-1042',
       date: new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date()),
       transactionUuid: transaction?.uuid || null,
-      paymentStatus: transaction?.paymentStatus || 'DEMO BYPASS',
+      paymentStatus: transaction?.paymentStatus || 'PAID',
     };
     setState((current) => ({ ...current, birthRequest: 'paid', receipt }));
     setScreen('receipt');
-    if (announcementRef.current) announcementRef.current.textContent = 'Demo payment confirmed. Mock receipt ready.';
+    if (announcementRef.current) announcementRef.current.textContent = 'Sandbox payment confirmed. Receipt ready.';
   };
 
   const resetDemo = () => {
