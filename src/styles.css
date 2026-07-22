@@ -212,6 +212,20 @@ a { color: var(--blue); }
 .progress-label strong { color: var(--blue); font-size: 11px; }
 .progress-track { height: 8px; overflow: hidden; border-radius: 999px; background: #dfe7f2; }
 .progress-track > span { display: block; height: 100%; border-radius: inherit; background: var(--blue); transition: width .3s ease; }
+.passport-case-picker { margin: 9px 0; padding: 12px; border: 1px solid #dbe4f0; border-radius: 14px; background: linear-gradient(145deg, #fbfdff, #f3f7fd); }
+.passport-case-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+.passport-case-heading > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.passport-case-heading strong { font-size: 12px; line-height: 1.3; }
+.passport-case-heading > span { flex: 0 0 auto; color: var(--blue); font-size: 9px; font-weight: 700; }
+.passport-case-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.passport-case-options button { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 8px; min-height: 64px; padding: 9px; border: 1px solid #dce3ed; border-radius: 11px; color: var(--ink); background: white; text-align: left; transition: border-color .18s ease, background-color .18s ease, transform .18s ease; }
+.passport-case-options button > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #68778b; background: #edf1f6; }
+.passport-case-options button svg { width: 14px; height: 14px; }
+.passport-case-options button strong { display: block; font-size: 9px; line-height: 1.35; }
+.passport-case-options button small { display: block; margin-top: 2px; color: var(--muted); font-size: 7px; line-height: 1.4; }
+.passport-case-options button.active { border-color: #7ea8ed; background: #edf5ff; box-shadow: inset 0 0 0 1px rgba(7,83,218,.08); }
+.passport-case-options button.active > span { color: white; background: var(--blue); }
+.passport-case-options button:active { transform: scale(.985); }
 .next-action-stack { display: grid; gap: 8px; margin-bottom: 9px; }
 .next-action-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 11px; border: 0; border-radius: 13px; background: var(--pink-soft); text-align: left; }
 .next-action-card:disabled { color: inherit; cursor: not-allowed; filter: saturate(.62); opacity: .7; }
@@ -220,6 +234,13 @@ a { color: var(--blue); }
 .next-action-card strong { display: block; margin: 2px 0; font-size: 12px; }
 .next-action-card p { margin: 0; color: #73666a; font-size: 8px; line-height: 1.45; }
 .next-action-card > svg { width: 17px; color: var(--blue); }
+.parallel-ready-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-bottom: 9px; padding: 11px; border: 1px solid #bfd4f5; border-radius: 13px; background: linear-gradient(100deg, #edf5ff, #fff9dd); }
+.parallel-ready-card > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: white; background: var(--blue); }
+.parallel-ready-card > span svg { width: 21px; height: 21px; }
+.parallel-ready-card small { color: var(--blue); letter-spacing: .07em; font-size: 8px; font-weight: 800; }
+.parallel-ready-card strong { display: block; margin: 2px 0; font-size: 12px; }
+.parallel-ready-card p { margin: 0; color: #5f6e81; font-size: 8px; line-height: 1.45; }
+.parallel-ready-card em { max-width: 105px; color: #7a6100; font-size: 8px; font-style: normal; font-weight: 700; text-align: right; }
 .next-branch-picker { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #d7e1ef; border-radius: 12px; background: var(--blue-soft); }
 .next-branch-picker > span { display: flex; align-items: center; gap: 6px; color: var(--blue); font-size: 10px; font-weight: 700; }
 .next-branch-picker svg { width: 15px; height: 15px; }
@@ -259,6 +280,8 @@ a { color: var(--blue); }
 .requirement-icon svg { width: 18px; height: 18px; }
 .requirement-copy { min-width: 0; }
 .requirement-copy > div:first-child { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.requirement-title-block { display: flex; min-width: 0; flex-direction: column; align-items: flex-start !important; gap: 2px !important; }
+.requirement-title-block small { color: var(--blue); letter-spacing: .07em; font-size: 7px; font-weight: 800; }
 .requirement-copy strong { font-size: 11px; line-height: 1.35; }
 .requirement-copy p { margin: 4px 0; color: var(--muted); font-size: 8px; line-height: 1.5; }
 .document-source { color: #7d8692; font-size: 7px; }
@@ -328,6 +351,8 @@ a { color: var(--blue); }
 .target .journey-node-status { color: white; background: var(--blue); }
 .journey-node-card > strong { overflow-wrap: anywhere; font-size: 14px; line-height: 1.28; }
 .journey-node-source { margin-top: 4px; color: #657285; font-size: 10px; line-height: 1.35; }
+.journey-node-batch { display: inline-flex; align-items: center; gap: 4px; width: max-content; margin-top: 6px; padding: 3px 6px; border-radius: 999px; color: #765700; background: #fff2bd; font-size: 8px; font-weight: 700; }
+.journey-node-batch svg { width: 10px; height: 10px; }
 .journey-node-note { display: flex; align-items: center; gap: 5px; margin-top: auto; padding-top: 9px; color: #7b6640; font-size: 9px; line-height: 1.35; }
 .journey-node-note.processing { color: #315d9e; }
 .journey-node-note svg { flex: 0 0 auto; width: 12px; height: 12px; }
@@ -569,6 +594,10 @@ a { color: var(--blue); }
   .promo-art > svg:first-child { width: 68px; height: 68px; padding: 12px; border-width: 5px; }
   .featured-section { margin-top: 18px; }
   .program-footer { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .passport-case-options { grid-template-columns: 1fr; }
+  .passport-case-options button { min-height: 58px; }
+  .parallel-ready-card { grid-template-columns: auto 1fr; align-items: start; }
+  .parallel-ready-card > em { grid-column: 2; max-width: none; text-align: left; }
   .next-branch-picker { grid-template-columns: 1fr; gap: 7px; }
   .checklist-viewbar { align-items: stretch; flex-direction: column; }
   .checklist-view-switch { width: 100%; }

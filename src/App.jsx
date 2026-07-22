@@ -54,6 +54,7 @@ const PROGRAMS = [
     title: 'Bagong Pilipinas Merit Scholarship',
     shortTitle: 'Merit Scholarship',
     agency: 'CHED',
+    category: 'Scholarships',
     type: 'Scholarship',
     status: 'Prepare for next call',
     statusTone: 'gold',
@@ -72,6 +73,7 @@ const PROGRAMS = [
     title: 'Tertiary Education Subsidy',
     shortTitle: 'TES',
     agency: 'CHED / UniFAST',
+    category: 'Scholarships',
     type: 'Grant-in-aid',
     status: 'After enrollment',
     statusTone: 'blue',
@@ -90,6 +92,7 @@ const PROGRAMS = [
     title: 'AICS Educational Assistance',
     shortTitle: 'Educational Assistance',
     agency: 'DSWD',
+    category: 'Assistance',
     type: 'Crisis assistance',
     status: 'Assessment required',
     statusTone: 'pink',
@@ -102,6 +105,43 @@ const PROGRAMS = [
     sourceLabel: 'Official DSWD overview',
     icon: HeartHandshake,
     accent: 'green',
+  },
+  {
+    id: 'dfa-passport',
+    title: 'DFA Passport Application Assistance',
+    shortTitle: 'Passport Assistance',
+    agency: 'DFA',
+    category: 'Assistance',
+    type: 'Government document',
+    status: 'Start documents in parallel',
+    statusTone: 'blue',
+    match: 'Useful identity milestone',
+    description: 'Prepare a first-time adult passport file and see which civil records, IDs, and special-case documents depend on one another.',
+    reasons: ['Adult applicant', 'Parallel document requests', 'Special-case guidance'],
+    timing: 'Appointment required',
+    count: '3 parallel starts + conditional branches',
+    source: 'https://aganapcg.dfa.gov.ph/consular-and-other-services/passports/requirements-for-passport',
+    sourceLabel: 'Official DFA requirements',
+    icon: BookOpen,
+    accent: 'blue',
+  },
+];
+
+const PASSPORT_CASE_OPTIONS = [
+  {
+    id: 'marriedName',
+    title: 'Using spouse\'s surname',
+    detail: 'Adds a PSA marriage certificate to the civil-record request lane.',
+  },
+  {
+    id: 'extraIdentityProof',
+    title: 'Needs extra identity proof',
+    detail: 'Shows the NBI alternative used in certain late-registration or record-discrepancy cases.',
+  },
+  {
+    id: 'lostValidPassport',
+    title: 'Replacing a lost valid passport',
+    detail: 'Adds the police report and notarized affidavit-of-loss branch.',
   },
 ];
 
@@ -186,7 +226,7 @@ const PROGRAM_REQUIREMENTS = {
 const PROMOS = [
   {
     eyebrow: 'Your opportunity map',
-    title: '3 government pathways may fit your next chapter.',
+    title: '4 government pathways may fit your next chapter.',
     copy: 'Based on Mika’s synthetic demo profile—not an approval.',
     action: 'See my matches',
     icon: GraduationCap,
@@ -232,6 +272,11 @@ const DEFAULT_STATE = {
   complete: ['bpms-profile'],
   birthRequest: 'not-started',
   selectedIncome: '',
+  passportCases: {
+    marriedName: false,
+    extraIdentityProof: false,
+    lostValidPassport: false,
+  },
   receipt: null,
   checklistView: 'graph',
 };
@@ -239,7 +284,13 @@ const DEFAULT_STATE = {
 function safeRead() {
   try {
     const saved = window.localStorage.getItem('eabot-youth-demo-v1');
-    return saved ? { ...DEFAULT_STATE, ...JSON.parse(saved) } : DEFAULT_STATE;
+    if (!saved) return DEFAULT_STATE;
+    const parsed = JSON.parse(saved);
+    return {
+      ...DEFAULT_STATE,
+      ...parsed,
+      passportCases: { ...DEFAULT_STATE.passportCases, ...(parsed.passportCases || {}) },
+    };
   } catch {
     return DEFAULT_STATE;
   }
@@ -400,7 +451,7 @@ function HomeScreen({ onNavigate, onSelectProgram, state }) {
           {['For you', 'Scholarships', 'Assistance'].map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}
         </div>
         <div className="program-list">
-          {PROGRAMS.filter((program) => tab === 'For you' || (tab === 'Scholarships' ? program.id !== 'aics' : program.id === 'aics')).slice(0, 3).map((program) => <ProgramCard key={program.id} program={program} onSelect={onSelectProgram} />)}
+          {PROGRAMS.filter((program) => tab === 'For you' || program.category === tab).slice(0, 3).map((program) => <ProgramCard key={program.id} program={program} onSelect={onSelectProgram} />)}
         </div>
       </section>
       <BottomNavigation active="home" onNavigate={onNavigate} />
@@ -487,6 +538,180 @@ function getBpmsRequirements(state) {
   ];
 }
 
+function getPassportRequirements(state) {
+  const done = new Set(state.complete);
+  const cases = { ...DEFAULT_STATE.passportCases, ...(state.passportCases || {}) };
+  const requestPaid = state.birthRequest === 'paid';
+  const finalDependencies = ['dfa-birth', 'dfa-primary-id', 'dfa-appointment'];
+  if (cases.marriedName) finalDependencies.push('dfa-marriage');
+  if (cases.extraIdentityProof) finalDependencies.push('dfa-nbi');
+  if (cases.lostValidPassport) finalDependencies.push('dfa-police', 'dfa-affidavit');
+
+  const definitions = [
+    {
+      id: 'dfa-profile',
+      title: 'Applicant details',
+      detail: 'Basic identity and contact information are ready for the passport form.',
+      source: 'eAbot demo profile',
+      icon: UserRound,
+      initial: 'complete',
+      level: 0,
+      lane: 0,
+      stageLabel: 'START',
+    },
+    {
+      id: 'dfa-birth',
+      title: 'PSA birth certificate',
+      detail: requestPaid ? 'Request submitted; wait for the issued copy before the DFA appearance.' : 'Request an original PSA-issued Certificate of Live Birth.',
+      source: 'Philippine Statistics Authority',
+      icon: FileText,
+      method: 'egov',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: -1,
+      stageLabel: 'START TOGETHER',
+      batchLabel: 'PSA civil records',
+      forcedStatus: done.has('dfa-birth') ? 'complete' : requestPaid ? 'processing' : undefined,
+    },
+    {
+      id: 'dfa-primary-id',
+      title: 'One acceptable government ID',
+      detail: 'Prepare the original and one photocopy of an ID accepted by DFA.',
+      source: 'Applicant / issuing agency',
+      icon: BadgeCheck,
+      method: 'upload',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: 0,
+      stageLabel: 'START TOGETHER',
+    },
+    {
+      id: 'dfa-appointment',
+      title: 'DFA appointment and application form',
+      detail: 'Book the appointment and keep the completed application form and e-receipt.',
+      source: 'passport.gov.ph',
+      icon: CalendarDays,
+      method: 'upload',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: 1,
+      stageLabel: 'START TOGETHER',
+    },
+    {
+      id: 'dfa-marriage',
+      title: 'PSA marriage certificate',
+      detail: 'Required when a married woman applies using the spouse\'s surname; it can be requested alongside the birth certificate.',
+      source: 'Philippine Statistics Authority',
+      icon: HeartHandshake,
+      method: 'upload',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: -2,
+      stageLabel: 'SAME PSA REQUEST LANE',
+      batchLabel: 'PSA civil records',
+      active: cases.marriedName,
+    },
+    {
+      id: 'dfa-secondary-id',
+      title: 'Second valid government ID',
+      detail: 'NBI clearance requires two valid government-issued IDs or accepted certificates.',
+      source: 'Applicant / issuing agency',
+      icon: BadgeCheck,
+      method: 'upload',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: 2,
+      stageLabel: 'NBI PREREQUISITE',
+      active: cases.extraIdentityProof,
+    },
+    {
+      id: 'dfa-police',
+      title: 'Police report',
+      detail: 'Required for replacement of a lost valid passport.',
+      source: 'Local police station',
+      icon: FileText,
+      method: 'upload',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: 3,
+      stageLabel: 'LOST-PASSPORT LANE',
+      active: cases.lostValidPassport,
+    },
+    {
+      id: 'dfa-affidavit',
+      title: 'Notarized affidavit of loss',
+      detail: 'Explain when, where, and how the passport was lost.',
+      source: 'Notary public / DFA consular officer',
+      icon: FileCheck2,
+      method: 'upload',
+      dependsOn: ['dfa-profile'],
+      level: 1,
+      lane: 4,
+      stageLabel: 'LOST-PASSPORT LANE',
+      active: cases.lostValidPassport,
+    },
+    {
+      id: 'dfa-nbi',
+      title: 'NBI clearance',
+      detail: 'An alternative supporting record in certain late-registration or identity-document cases—not a standard passport requirement.',
+      source: 'National Bureau of Investigation',
+      icon: ShieldCheck,
+      method: 'upload',
+      dependsOn: ['dfa-primary-id', 'dfa-secondary-id'],
+      level: 2,
+      lane: 1,
+      stageLabel: 'NESTED REQUIREMENT',
+      active: cases.extraIdentityProof,
+    },
+    {
+      id: 'dfa-nbi-hit',
+      title: 'Additional NBI verification',
+      detail: 'Only if NBI returns a HIT or quality-control instruction; follow the case-specific documents NBI requests.',
+      source: 'NBI Quality Control',
+      icon: Info,
+      dependsOn: ['dfa-nbi'],
+      level: 3,
+      lane: 2,
+      stageLabel: 'ONLY IF INSTRUCTED',
+      active: false,
+    },
+    {
+      id: 'dfa-final-check',
+      title: 'DFA appointment document check',
+      detail: 'Bring the required originals and photocopies for personal appearance and biometrics.',
+      source: 'Department of Foreign Affairs',
+      icon: BookOpen,
+      method: 'assisted',
+      dependsOn: finalDependencies,
+      level: 3,
+      lane: 0,
+      stageLabel: 'FINAL CHECK',
+      finalGate: true,
+    },
+  ];
+
+  const statuses = new Map();
+  return definitions.map((item) => {
+    const active = item.active !== false;
+    const dependencies = item.dependsOn || [];
+    const ready = dependencies.every((id) => statuses.get(id) === 'complete');
+    const status = !active
+      ? 'conditional'
+      : item.forcedStatus || (done.has(item.id) || item.initial === 'complete' ? 'complete' : ready ? 'available' : 'locked');
+    statuses.set(item.id, status);
+    const blockingTitles = dependencies
+      .filter((id) => statuses.get(id) !== 'complete')
+      .map((id) => definitions.find((candidate) => candidate.id === id)?.title)
+      .filter(Boolean);
+    return {
+      ...item,
+      status,
+      active,
+      lockedBy: blockingTitles.length ? `Finish ${blockingTitles.join(' and ')} first` : '',
+    };
+  });
+}
+
 function RequirementStatus({ status }) {
   const config = {
     complete: { icon: Check, label: 'Complete' },
@@ -499,11 +724,12 @@ function RequirementStatus({ status }) {
   return <span className={`requirement-status ${status}`}><Icon />{config.label}</span>;
 }
 
-function JourneyAside({ program, isBpms }) {
+function JourneyAside({ program, isBpms, isPassport }) {
   return (
     <aside className="journey-aside">
       <div className="source-card"><ShieldCheck /><div><strong>Official-source map</strong><p>The prototype organizes published requirements. Agencies can still request validation or updated documents.</p><a href={program.source} target="_blank" rel="noreferrer">Open {program.sourceLabel}<ExternalLink /></a></div></div>
       {isBpms && <div className="conditional-card"><Info /><div><strong>Conditional documents</strong><p>Top-five, PWD, Solo Parent, Indigenous Peoples, first-generation, and other equity proofs only appear when relevant.</p></div></div>}
+      {isPassport && <div className="conditional-card"><Info /><div><strong>NBI is not a default passport requirement</strong><p>It appears here only for selected supporting-document cases. The NBI branch itself needs two valid IDs, and a HIT may trigger case-specific verification.</p><a href="https://nbi.gov.ph/citizens-charter/nbi-clearance-application/" target="_blank" rel="noreferrer">Open official NBI requirements<ExternalLink /></a></div></div>}
     </aside>
   );
 }
@@ -511,10 +737,11 @@ function JourneyAside({ program, isBpms }) {
 function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
   const program = PROGRAMS.find((item) => item.id === state.selectedProgram) || PROGRAMS[0];
   const isBpms = program.id === 'bpms';
+  const isPassport = program.id === 'dfa-passport';
   const generic = PROGRAM_REQUIREMENTS[program.id] || [];
   const completed = new Set(state.complete);
   let encounteredAvailable = false;
-  const requirements = isBpms ? getBpmsRequirements(state) : generic.map((item, index) => {
+  const requirements = isBpms ? getBpmsRequirements(state) : isPassport ? getPassportRequirements(state) : generic.map((item, index) => {
     let status = completed.has(item.id) || item.initial === 'complete' ? 'complete' : item.conditional ? 'conditional' : !encounteredAvailable ? 'available' : 'locked';
     if (status === 'available') encounteredAvailable = true;
     return { ...item, status, lockedBy: index > 0 ? 'Complete the step above first' : '' };
@@ -522,7 +749,8 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
   const coreRequirements = requirements.filter((item) => item.status !== 'conditional');
   const completedCount = coreRequirements.filter((item) => item.status === 'complete' || item.status === 'processing').length;
   const progress = Math.round((completedCount / Math.max(coreRequirements.length, 1)) * 100);
-  const next = requirements.find((item) => item.status === 'available');
+  const availableNow = requirements.filter((item) => item.status === 'available');
+  const next = availableNow[0];
   const ProgramIcon = program.icon;
   const checklistView = state.checklistView === 'list' ? 'list' : 'graph';
 
@@ -550,7 +778,42 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
         <ProgressBar value={progress} label="Journey progress" />
       </section>
 
-      {next ? (
+      {isPassport && (
+        <section className="passport-case-picker" aria-labelledby="passport-case-title">
+          <div className="passport-case-heading">
+            <div><span className="section-kicker">APPLICANT CASE</span><strong id="passport-case-title">Show only the branches that apply</strong></div>
+            <span>{Object.values(state.passportCases || {}).filter(Boolean).length} selected</span>
+          </div>
+          <div className="passport-case-options">
+            {PASSPORT_CASE_OPTIONS.map((option) => {
+              const selected = Boolean(state.passportCases?.[option.id]);
+              return (
+                <button
+                  type="button"
+                  key={option.id}
+                  className={selected ? 'active' : ''}
+                  aria-pressed={selected}
+                  onClick={() => setState((current) => ({
+                    ...current,
+                    passportCases: { ...DEFAULT_STATE.passportCases, ...(current.passportCases || {}), [option.id]: !current.passportCases?.[option.id] },
+                  }))}
+                >
+                  <span>{selected ? <Check /> : <Info />}</span>
+                  <div><strong>{option.title}</strong><small>{option.detail}</small></div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {availableNow.length > 1 ? (
+        <section className="parallel-ready-card">
+          <span><Network /></span>
+          <div><small>START IN PARALLEL</small><strong>{availableNow.length} steps can move at the same time</strong><p>{availableNow.map((item) => item.title).join(' • ')}</p></div>
+          <em>Choose any card in the graph</em>
+        </section>
+      ) : next ? (
         <div className="next-action-stack">
           <button className="next-action-card" disabled={next.method === 'income' && !state.selectedIncome} onClick={() => handleRequirement(next)}>
             <span><ArrowRight /></span><div><small>NEXT AVAILABLE STEP</small><strong>{next.title}</strong><p>{next.detail}</p></div><ChevronRight />
@@ -580,7 +843,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
       {checklistView === 'graph' ? (
         <div className="requirements-layout graph-layout">
           <RequirementGraph requirements={requirements} program={program} onOpen={handleRequirement} selectedIncome={state.selectedIncome} />
-          <JourneyAside program={program} isBpms={isBpms} />
+          <JourneyAside program={program} isBpms={isBpms} isPassport={isPassport} />
         </div>
       ) : (
         <div className="requirements-layout">
@@ -595,7 +858,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
                     <span className="requirement-number">{requirement.status === 'complete' ? <Check /> : index + 1}</span>
                     <span className="requirement-icon"><Icon /></span>
                     <div className="requirement-copy">
-                      <div><strong>{requirement.title}</strong><RequirementStatus status={requirement.status} /></div>
+                      <div><div className="requirement-title-block">{requirement.stageLabel && <small>{requirement.stageLabel}</small>}<strong>{requirement.title}</strong></div><RequirementStatus status={requirement.status} /></div>
                       <p>{requirement.detail}</p>
                       <span className="document-source">From: {requirement.source}</span>
                       {requirement.status === 'locked' && <span className="locked-note"><LockKeyhole />{requirement.lockedBy}</span>}
@@ -608,8 +871,8 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
                           </select>
                         </label>
                       )}
-                      {requirement.status === 'processing' && requirement.id === 'bpms-birth' && (
-                        <div className="processing-detail"><span><Check /> Request and payment complete</span><button onClick={() => setState((current) => ({ ...current, complete: [...new Set([...current.complete, 'bpms-birth'])] }))}>Mark as issued</button></div>
+                      {requirement.status === 'processing' && requirement.method === 'egov' && (
+                        <div className="processing-detail"><span><Check /> Request and payment complete</span><button onClick={() => setState((current) => ({ ...current, complete: [...new Set([...current.complete, requirement.id])] }))}>Mark as issued</button></div>
                       )}
                     </div>
                     {requirement.status === 'available' && (
@@ -622,7 +885,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
               })}
             </ol>
           </section>
-          <JourneyAside program={program} isBpms={isBpms} />
+          <JourneyAside program={program} isBpms={isBpms} isPassport={isPassport} />
         </div>
       )}
       <BottomNavigation active="documents" onNavigate={onNavigate} />
@@ -646,7 +909,7 @@ function DocumentScreen({ requirement, state, onBack, onPayment, onComplete }) {
           <p>{requirement.detail}</p>
         </div>
         <section className="detail-card">
-          <div className="detail-row"><span>Purpose</span><strong>{state.selectedProgram === 'bpms' ? 'Merit scholarship readiness' : 'Education assistance readiness'}</strong></div>
+          <div className="detail-row"><span>Purpose</span><strong>{state.selectedProgram === 'bpms' ? 'Merit scholarship readiness' : state.selectedProgram === 'dfa-passport' ? 'Passport application readiness' : 'Education assistance readiness'}</strong></div>
           <div className="detail-row"><span>Document source</span><strong>{requirement.source}</strong></div>
           <div className="detail-row"><span>Current status</span><StatusPill tone="blue">Ready to start</StatusPill></div>
           {isEgov && <div className="detail-row"><span>Service fee</span><strong>₱155.00 <small>sandbox</small></strong></div>}
