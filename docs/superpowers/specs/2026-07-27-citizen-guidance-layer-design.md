@@ -28,29 +28,64 @@ converts both into data driven by a small pure engine.
 
 ## 2. Starting conditions
 
-Verified on 27 July 2026 against `.env.local`:
+All eight services were confirmed against the organisers' API portal on
+28 July 2026, then verified by DNS and TLS reachability check. **All eight hosts
+resolve and serve over HTTPS.**
 
-| Service | Credential | Base URL |
-|---|---|---|
-| eGovPay | present | `egovpay-pg1-ws-dev.oueg.info` |
-| eGov AI | present | `egov-ai-core-ws.oueg.info` |
-| eGov SSO | present | **empty** |
-| eVerify | present | **empty** |
-| eMessage | present | **empty** |
-| eReport | present | **empty** |
-| Face Liveness | present | **empty** |
-| DBM COMPASS | present | **empty** |
+| Service | Base URL | Endpoint (as documented) | Auth |
+|---|---|---|---|
+| SSO | `https://hackathon-sso.e.gov.ph` | `POST /api/token` | issues a token |
+| eVerify | `https://hackathon-everify-api.e.gov.ph` | `POST /api/query/qr` | `Authorization: Bearer` |
+| Face Liveness | `https://hackathon-face-liveness-api.e.gov.ph` | `POST /v1/liveness/session` | `x-api-key` |
+| eMessage | `https://ws-message.e.gov.ph` | `POST /messaging/v1/sms/push` | `X-EMESSAGE-Auth` |
+| eGov AI | `https://egov-ai-core-ws.oueg.info` | `POST /api/v1/egov/integration/token` | issues a token |
+| eGovPay | `https://egovpay-pgi-ws-dev.oueg.info` | `POST /api/v1/transaction` | `X-eGovPay-Token` |
+| eReport | `https://stg-ereport-ws.oueg.info` | `GET /api/integration/datasets/report_types` | `Authorization: Bearer` |
+| COMPASS | `https://dbm-ws.oueg.info` | `GET /api/v1/records/saaodb` | `X-API-Key` |
 
-The `.egov.ph` URLs in `docs/02-API-INTEGRATION.md` are **not verified**.
-`egov.ph` serves a wildcard DNS record — every subdomain resolves to
-`121.54.81.131`, including nonsense ones — so those URLs resolving proves
-nothing. `compass-api.dbm.gov.ph` has no A record.
-`egovpay-pg1-ws-dev.oueg.info` also failed to resolve during the check, so even
-the one working integration may be pointing at a dead or network-restricted host.
+### 2.1 Corrected defect
 
-**Design consequence:** the system must be fully demonstrable with zero
-reachable services, and must light up per-service as URLs are confirmed, with no
-code changes beyond setting an environment variable.
+`.env.local` previously held `egovpay-**pg1**-ws-dev.oueg.info` (digit one). The
+correct host is `egovpay-**pgi**-ws-dev.oueg.info` (letter i). The incorrect host
+has no DNS record, so **the eGovPay integration had never worked** — every
+`POST /api/egovpay/create` failed at DNS resolution. Corrected in `.env.local`.
+
+### 2.2 `docs/02-API-INTEGRATION.md` is unreliable
+
+That document was written speculatively and does not match the portal. Its
+`.egov.ph` hosts are fabricated: `egov.ph` (no dot) serves a **wildcard DNS
+record**, so every subdomain resolves and resolution proved nothing. The real
+services are on `e.gov.ph` (with a dot) and `oueg.info`. Its auth patterns are
+also wrong — it describes SSO as HMAC-signed `/api/v1/auth/initiate`, and
+eVerify as a name/birthdate/ID-number form. Neither matches reality.
+
+**Every integration pattern in that file must be re-derived from the portal
+before use.** This spec's §2 table supersedes it.
+
+### 2.3 Authentication is per-service, not unified
+
+There is no single platform token. Two services issue tokens by exchange (SSO,
+eGov AI); six use static credentials under six different header names. The
+design therefore needs a **small reusable token-cache helper used by two
+services**, not a platform-wide auth layer.
+
+### 2.4 Open questions
+
+1. **Source of eVerify's Bearer token** — most likely SSO's `/api/token`, but
+   unconfirmed. Confirm from the portal's eVerify page.
+2. **eReport submit endpoint** — the captured call is a reference-data `GET`
+   (`report_types`), not the report submission.
+3. **A sandbox PhilSys QR value** for eVerify. `RAW_QR_CODE_VALUE` is a
+   placeholder. Scanning a real ID would breach PRD Rules #1 and #10, so a test
+   value must be obtained from the organisers.
+4. **COMPASS `class` parameter** — the example uses `PS` (Personnel Services).
+   Programme funding is likely `MOOE` or `CO`.
+5. **`EGOV_SSO_PARTNER_CODE`** — portal shows `TEST_AGENCY`; `.env.local` holds
+   `HACKATHON_SSO`. Confirm which is issued to this team.
+
+**Design consequence (unchanged):** the system must remain fully demonstrable
+with zero reachable services, and must light up per-service via environment
+variables alone. Reachability today does not guarantee reachability on demo day.
 
 ---
 
@@ -335,7 +370,24 @@ once rather than in seven handlers.
 Per-service timeouts: eGov AI 30s, Face Liveness 20s, eVerify 15s, eReport 15s,
 eGovPay 12s, COMPASS 12s, SSO 12s, eMessage 10s.
 
-### 6.4 Three-layer degradation
+### 6.4 Token-exchange helper
+
+Two services issue tokens rather than accepting a static credential:
+
+- **SSO** — `POST /api/token`, likely the source of eVerify's Bearer token.
+- **eGov AI** — `POST /api/v1/egov/integration/token` with `{ access_code }`.
+
+`api/_lib/token-cache.js` provides one small helper: fetch once, cache in module
+scope until expiry (minus a 60s safety margin), refresh on 401, and never log
+the token. Module scope is adequate — a warm serverless instance reuses it, and
+a cold start simply re-fetches.
+
+The other six services use static credentials under six different header names
+(`X-eGovPay-Token`, `X-EMESSAGE-Auth`, `x-api-key`, `X-API-Key`,
+`Authorization: Bearer`). Header naming is per-service configuration in each
+adapter, not a shared convention.
+
+### 6.5 Three-layer degradation
 
 1. Capability unconfigured → server returns mock, flagged.
 2. Capability configured but call fails or times out → server falls back to mock,
@@ -344,12 +396,12 @@ eGovPay 12s, COMPASS 12s, SSO 12s, eMessage 10s.
 
 The app cannot white-screen because a government sandbox is down.
 
-### 6.5 Health endpoint
+### 6.6 Health endpoint
 
 `GET /api/health` returns `{ egovAi: 'live', everify: 'unconfigured', ... }` —
 status strings only, never credential values. Pre-demo preflight.
 
-### 6.6 Rate limiting
+### 6.7 Rate limiting
 
 Serverless is stateless; no server-side limiter. Client-side debounce on AI chat
 (20 req/min is the tightest documented limit) and a submit-lock on eReport.
@@ -394,7 +446,7 @@ matcher is pure.
   a rule without a `label` throws at startup, never mid-demo.
 - **React error boundary per screen** so one bad render cannot take down the shell.
 - **Domain layer has no failure modes** — pure functions over in-memory data.
-- API errors are handled entirely by §6.4.
+- API errors are handled entirely by §6.5.
 
 ---
 
