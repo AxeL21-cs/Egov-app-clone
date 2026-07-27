@@ -1,0 +1,27 @@
+# Dependencies and build output
+node_modules
+dist
+.vercel
+
+# Local env files
+.env
+.env.*
+*.local
+
+# Intentionally tracked: the template, and the hackathon sandbox credentials.
+# The eGov hackathon APIs are publicly issued for this event, so .env.local is
+# versioned on purpose. If any non-public credential is ever added here, drop
+# the second negation and run: git rm --cached .env.local
+!.env.example
+!.env.local
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+
+# Editor and OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db

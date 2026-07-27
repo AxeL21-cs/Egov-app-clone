@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
