@@ -14,6 +14,7 @@ export const EMPTY_PROFILE = Object.freeze({
   isIndigenous: null,
   has4Ps: null,
   philHealthMember: null,
+  hasStudentInHousehold: null,
   verifiedAttributes: null,
 });
 
@@ -33,7 +34,7 @@ export const PERSONAS = Object.freeze([
     id: 'mika', label: 'Mika, 18 — incoming freshman',
     age: 18, region: 'NCR', city: 'San Juan City', citizenship: 'PH',
     educationStatus: 'incoming-college', academicStanding: 'high',
-    employmentStatus: 'none', isPWD: false,
+    employmentStatus: 'none', isPWD: false, hasStudentInHousehold: true,
   })),
   Object.freeze(createProfile({
     id: 'ramon', label: 'Ramon, 45 — informal worker',

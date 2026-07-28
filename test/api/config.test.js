@@ -30,6 +30,19 @@ test('unconfigured when a value is blank or whitespace', () => {
   assert.equal(capabilityStatus({ ...FULL_ENV, EGOV_AI_ACCESS_CODE: '   ' }, 'egovAi'), 'unconfigured');
 });
 
+// egovAi has exactly one credential, so creds.every(...) and creds.some(...) behave
+// identically against it and a regression from `every` to `some` would slip through every
+// egovAi assertion above undetected. `sso` has two credentials (EGOV_SSO_PARTNER_CODE and
+// EGOV_SSO_PARTNER_SECRET), so this is the discriminating case: with only one of the two
+// present, `every` correctly reports 'unconfigured' while a buggy `some' would wrongly
+// report 'live'.
+test('unconfigured when only one of two required credentials is present (sso)', () => {
+  assert.equal(capabilityStatus({
+    EGOV_SSO_API_BASE_URL: 'https://sso.test',
+    EGOV_SSO_PARTNER_CODE: 'partner-code',
+  }, 'sso'), 'unconfigured');
+});
+
 test('capabilityConfig strips a trailing slash from the base URL', () => {
   const config = capabilityConfig({ ...FULL_ENV, EGOV_AI_API_BASE_URL: 'https://ai.test/' }, 'egovAi');
   assert.equal(config.baseUrl, 'https://ai.test');

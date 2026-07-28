@@ -1,4 +1,5 @@
-import { createDemoTransaction, publicPaymentError } from '../_lib/egovpay.js';
+import { createDemoTransaction } from '../_lib/egovpay.js';
+import { publicError } from '../_lib/errors.js';
 
 function requestOrigin(req) {
   const protocol = req.headers['x-forwarded-proto'] || 'https';
@@ -17,7 +18,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(201).json({ transaction });
   } catch (error) {
-    const result = publicPaymentError(error);
+    const result = publicError(error);
     return res.status(result.status).json(result.body);
   }
 }

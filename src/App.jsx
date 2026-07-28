@@ -6,7 +6,6 @@ import {
   BadgeCheck,
   BookOpen,
   Bot,
-  Building2,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -17,10 +16,8 @@ import {
   Download,
   ExternalLink,
   FileCheck2,
-  FileText,
   FolderOpen,
   GraduationCap,
-  HeartHandshake,
   Home,
   Info,
   Landmark,
@@ -36,6 +33,27 @@ import {
   UserRound,
   WalletCards,
 } from 'lucide-react';
+import { CATALOG, getEntry } from './domain/catalog/index.js';
+import { resolveJourney, journeyProgress } from './domain/journey.js';
+import { evaluateEntry } from './domain/matcher.js';
+import { getPersona } from './domain/profile.js';
+import { iconFor } from './components/icons.js';
+
+const PROGRAMS = CATALOG;
+
+// The demo citizen. Computed once at module scope since getPersona('mika') is a frozen
+// constant — no need to recompute it on every ProgramCard render.
+const DEMO_PROFILE = getPersona('mika');
+
+// Maps the engine's computed confidence tier to the exact citizen-facing label. Keep this
+// in sync with the tiers evaluateEntry can return — 'possible' is the highest tier the
+// system can express and must never be assumed for programs the engine hasn't rated that way.
+const TIER_LABELS = {
+  possible: 'Possible match',
+  'worth-checking': 'Worth checking',
+  'needs-info': 'Needs more info',
+  'not-eligible': 'Not a fit right now',
+};
 
 const PROFILE = {
   name: 'Mika Reyes',
@@ -44,141 +62,6 @@ const PROFILE = {
   age: 18,
   city: 'San Juan City, Metro Manila',
   status: 'Incoming college freshman',
-};
-
-const PROGRAMS = [
-  {
-    id: 'bpms',
-    title: 'Bagong Pilipinas Merit Scholarship',
-    shortTitle: 'Merit Scholarship',
-    agency: 'CHED',
-    type: 'Scholarship',
-    status: 'Prepare for next call',
-    statusTone: 'gold',
-    match: 'Strong profile match',
-    description: 'A competitive merit pathway for high-performing incoming first-year students in priority programs.',
-    reasons: ['Incoming first-year', 'Strong Grade 12 record', 'Needs a document plan'],
-    timing: 'AY 2026–2027 call closed',
-    count: '5 requirement groups',
-    source: 'https://bpms.ched.gov.ph/',
-    sourceLabel: 'Official CHED portal',
-    icon: GraduationCap,
-    accent: 'blue',
-  },
-  {
-    id: 'tes',
-    title: 'Tertiary Education Subsidy',
-    shortTitle: 'TES',
-    agency: 'CHED / UniFAST',
-    type: 'Grant-in-aid',
-    status: 'After enrollment',
-    statusTone: 'blue',
-    match: 'Possible future match',
-    description: 'Support for eligible students enrolled in participating public or private higher education institutions.',
-    reasons: ['Filipino student', 'Incoming freshman', 'School coordinates application'],
-    timing: 'Coordinate with your school',
-    count: '1 core + conditional docs',
-    source: 'https://unifast.gov.ph/tes.html',
-    sourceLabel: 'Official UniFAST page',
-    icon: School,
-    accent: 'red',
-  },
-  {
-    id: 'aics',
-    title: 'AICS Educational Assistance',
-    shortTitle: 'Educational Assistance',
-    agency: 'DSWD',
-    type: 'Crisis assistance',
-    status: 'Assessment required',
-    statusTone: 'pink',
-    match: 'Worth checking',
-    description: 'Short-term assistance for a student or family experiencing an actual crisis, subject to social-worker assessment.',
-    reasons: ['College expenses ahead', 'Local assessment available', 'No application fee'],
-    timing: 'Local schedules vary',
-    count: 'School + identity documents',
-    source: 'https://www.dswd.gov.ph/aics/',
-    sourceLabel: 'Official DSWD overview',
-    icon: HeartHandshake,
-    accent: 'green',
-  },
-];
-
-const INCOME_OPTIONS = [
-  { id: 'non-filer', title: 'BIR non-filer / tax exemption certificate', detail: 'For a parent or guardian without a filed income tax return.' },
-  { id: 'itr', title: 'Latest ITR or BIR Form 2316', detail: 'For employed or self-employed parents or legal guardians.' },
-  { id: 'ofw', title: 'OFW or seafarer income proof', detail: 'Certified latest contract or equivalent proof of income.' },
-  { id: 'four-ps', title: '4Ps certification', detail: 'DSWD or city/municipal social welfare certification.' },
-];
-
-const PROGRAM_REQUIREMENTS = {
-  tes: [
-    {
-      id: 'tes-profile',
-      title: 'Student profile',
-      detail: 'Demo identity and student status saved.',
-      source: 'eAbot demo profile',
-      icon: UserRound,
-      initial: 'complete',
-    },
-    {
-      id: 'tes-enrollment',
-      title: 'Certificate of Registration or Enrollment',
-      detail: 'Request this from your school after enrollment.',
-      source: 'School registrar',
-      icon: School,
-      method: 'upload',
-    },
-    {
-      id: 'tes-residency',
-      title: 'Certificate of Residency',
-      detail: 'Conditional for the applicable private-school / no-SUC-or-LUC category.',
-      source: 'LGU or barangay',
-      icon: Building2,
-      conditional: true,
-    },
-    {
-      id: 'tes-pwd',
-      title: 'PWD ID',
-      detail: 'Only needed when claiming the PWD priority category.',
-      source: 'PDAO / LGU',
-      icon: BadgeCheck,
-      conditional: true,
-    },
-  ],
-  aics: [
-    {
-      id: 'aics-profile',
-      title: 'Valid ID for the interview',
-      detail: 'Demo identity is saved; bring an accepted physical ID to the actual interview.',
-      source: 'Applicant',
-      icon: UserRound,
-      initial: 'complete',
-    },
-    {
-      id: 'aics-school',
-      title: 'Current school document',
-      detail: 'Enrollment assessment, certificate of enrollment/registration, or statement of account.',
-      source: 'School registrar',
-      icon: School,
-      method: 'upload',
-    },
-    {
-      id: 'aics-assessment',
-      title: 'Social-worker assessment',
-      detail: 'A DSWD social worker determines whether an actual crisis qualifies for assistance.',
-      source: 'DSWD field or satellite office',
-      icon: HeartHandshake,
-      method: 'assisted',
-    },
-    {
-      id: 'aics-local',
-      title: 'Local supporting documents',
-      detail: 'Residency, indigency, or authorization documents may be requested for your case.',
-      source: 'Barangay / applicant',
-      icon: Building2,
-      conditional: true,
-    },
-  ],
 };
 
 const PROMOS = [
@@ -226,17 +109,24 @@ const NAV_ITEMS = [
 ];
 
 const DEFAULT_STATE = {
-  selectedProgram: 'bpms',
-  complete: ['bpms-profile'],
+  selectedProgram: 'ched-bpms',
+  complete: ['bpms-profile', 'tes-profile', 'aics-profile'],
   birthRequest: 'not-started',
   selectedIncome: '',
   receipt: null,
 };
 
+const LEGACY_PROGRAM_IDS = { bpms: 'ched-bpms', tes: 'ched-tes', aics: 'dswd-aics' };
+
 function safeRead() {
   try {
     const saved = window.localStorage.getItem('eabot-youth-demo-v1');
-    return saved ? { ...DEFAULT_STATE, ...JSON.parse(saved) } : DEFAULT_STATE;
+    if (!saved) return DEFAULT_STATE;
+    const parsed = JSON.parse(saved);
+    const migratedProgram = LEGACY_PROGRAM_IDS[parsed.selectedProgram] || parsed.selectedProgram;
+    const selectedProgram = getEntry(migratedProgram) ? migratedProgram : DEFAULT_STATE.selectedProgram;
+    const complete = [...new Set([...DEFAULT_STATE.complete, ...(parsed.complete || [])])];
+    return { ...DEFAULT_STATE, ...parsed, selectedProgram, complete };
   } catch {
     return DEFAULT_STATE;
   }
@@ -288,7 +178,9 @@ function ProgressBar({ value, label }) {
 }
 
 function ProgramCard({ program, onSelect, featured = false }) {
-  const Icon = program.icon;
+  const Icon = iconFor(program.icon);
+  const tier = evaluateEntry(program, DEMO_PROFILE).tier;
+  const tierLabel = TIER_LABELS[tier];
   return (
     <article className={`program-card ${featured ? 'featured' : ''}`}>
       <button className="program-main" onClick={() => onSelect(program.id)}>
@@ -300,12 +192,12 @@ function ProgramCard({ program, onSelect, featured = false }) {
           </span>
           <strong>{program.title}</strong>
           <span className="program-description">{program.description}</span>
-          <span className="program-meta"><BadgeCheck /> {program.match}<span>•</span>{program.count}</span>
+          <span className="program-meta"><BadgeCheck /> {tierLabel}<span>•</span>{program.journey.steps.length} steps</span>
         </span>
         <ChevronRight className="card-chevron" />
       </button>
       <div className="program-footer">
-        <span>{program.timing}</span>
+        <span>{program.window.note}</span>
         <a href={program.source} target="_blank" rel="noreferrer">{program.sourceLabel}<ExternalLink /></a>
       </div>
     </article>
@@ -331,6 +223,8 @@ function HomeScreen({ onNavigate, onSelectProgram, state }) {
   const currentPromo = PROMOS[promo];
   const PromoIcon = currentPromo.icon;
   const birthStarted = state.birthRequest === 'paid';
+  const selectedEntry = getEntry(state.selectedProgram) || CATALOG[0];
+  const totalSteps = selectedEntry.journey.steps.length;
 
   return (
     <main className="page home-screen screen-enter">
@@ -375,12 +269,12 @@ function HomeScreen({ onNavigate, onSelectProgram, state }) {
       <section className="utility-grid" aria-label="Your opportunity dashboard">
         <button className="readiness-tile" onClick={() => onNavigate('documents')}>
           <span className="tile-label">MY DOCUMENT PLAN</span>
-          <strong>{birthStarted ? '2' : '1'} <small>of 5 steps</small></strong>
+          <strong>{birthStarted ? '2' : '1'} <small>of {totalSteps} steps</small></strong>
           <p>{birthStarted ? 'Your PSA request is processing. Your school record is next.' : 'Start with one document today. We will show what comes next.'}</p>
           <span className="tile-action">Open checklist <ArrowRight /></span>
           <FileCheck2 className="tile-watermark" />
         </button>
-        <button className="small-tile pink" onClick={() => onSelectProgram('bpms')}>
+        <button className="small-tile pink" onClick={() => onSelectProgram('ched-bpms')}>
           <span><GraduationCap /></span><div><small>BEST MATCH</small><strong>Merit pathway</strong><em>Build your file early</em></div>
         </button>
         <button className="small-tile green" onClick={() => onNavigate('assistant')}>
@@ -397,7 +291,7 @@ function HomeScreen({ onNavigate, onSelectProgram, state }) {
           {['For you', 'Scholarships', 'Assistance'].map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}
         </div>
         <div className="program-list">
-          {PROGRAMS.filter((program) => tab === 'For you' || (tab === 'Scholarships' ? program.id !== 'aics' : program.id === 'aics')).slice(0, 3).map((program) => <ProgramCard key={program.id} program={program} onSelect={onSelectProgram} />)}
+          {PROGRAMS.filter((program) => tab === 'For you' || (tab === 'Assistance' ? program.type === 'Crisis assistance' : program.type !== 'Crisis assistance')).slice(0, 3).map((program) => <ProgramCard key={program.id} program={program} onSelect={onSelectProgram} />)}
         </div>
       </section>
       <BottomNavigation active="home" onNavigate={onNavigate} />
@@ -430,60 +324,6 @@ function OpportunitiesScreen({ onNavigate, onSelectProgram }) {
   );
 }
 
-function getBpmsRequirements(state) {
-  const done = new Set(state.complete);
-  const requestPaid = state.birthRequest === 'paid';
-  return [
-    {
-      id: 'bpms-profile',
-      title: 'Online application profile',
-      detail: 'Synthetic identity and basic applicant details are ready.',
-      source: 'Applicant profile',
-      icon: UserRound,
-      status: 'complete',
-    },
-    {
-      id: 'bpms-birth',
-      title: 'PSA birth certificate',
-      detail: requestPaid ? 'Demo request submitted. The document itself is still processing.' : 'Request a copy through the future eGov document-service connection.',
-      source: 'Philippine Statistics Authority',
-      icon: FileText,
-      method: 'egov',
-      status: done.has('bpms-birth') ? 'complete' : requestPaid ? 'processing' : 'available',
-    },
-    {
-      id: 'bpms-sf9',
-      title: 'Certified SF9 / Form 138',
-      detail: 'Signed by your registrar or authorized school representative.',
-      source: 'Senior high school registrar',
-      icon: School,
-      method: 'upload',
-      status: done.has('bpms-sf9') ? 'complete' : requestPaid || done.has('bpms-birth') ? 'available' : 'locked',
-      lockedBy: 'Start the PSA request first',
-    },
-    {
-      id: 'bpms-admission',
-      title: 'College admission proof',
-      detail: 'Admission slip or another accepted proof from your selected institution.',
-      source: 'College admissions office',
-      icon: GraduationCap,
-      method: 'upload',
-      status: done.has('bpms-admission') ? 'complete' : done.has('bpms-sf9') ? 'available' : 'locked',
-      lockedBy: 'Complete your school record step first',
-    },
-    {
-      id: 'bpms-income',
-      title: 'One proof of household income',
-      detail: state.selectedIncome ? INCOME_OPTIONS.find((item) => item.id === state.selectedIncome)?.title : 'Choose one accepted document path below.',
-      source: 'BIR, DSWD, or employer',
-      icon: WalletCards,
-      method: 'income',
-      status: done.has('bpms-income') ? 'complete' : done.has('bpms-admission') ? 'available' : 'locked',
-      lockedBy: 'Add your college admission proof first',
-    },
-  ];
-}
-
 function RequirementStatus({ status }) {
   const config = {
     complete: { icon: Check, label: 'Complete' },
@@ -496,22 +336,54 @@ function RequirementStatus({ status }) {
   return <span className={`requirement-status ${status}`}><Icon />{config.label}</span>;
 }
 
-function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
-  const program = PROGRAMS.find((item) => item.id === state.selectedProgram) || PROGRAMS[0];
-  const isBpms = program.id === 'bpms';
-  const generic = PROGRAM_REQUIREMENTS[program.id] || [];
-  const completed = new Set(state.complete);
-  let encounteredAvailable = false;
-  const requirements = isBpms ? getBpmsRequirements(state) : generic.map((item, index) => {
-    let status = completed.has(item.id) || item.initial === 'complete' ? 'complete' : item.conditional ? 'conditional' : !encounteredAvailable ? 'available' : 'locked';
-    if (status === 'available') encounteredAvailable = true;
-    return { ...item, status, lockedBy: index > 0 ? 'Complete the step above first' : '' };
+// Hand-written locked-step hints from the pre-engine implementation. resolveJourney only knows
+// how to compute a generic "blocked by <title of the unmet dependency>" hint; these overrides
+// restore the exact old copy so the UI reads identically to before the engine swap.
+const BPMS_LOCKED_HINTS = {
+  'bpms-sf9': 'Start the PSA request first',
+  'bpms-admission': 'Complete your school record step first',
+  'bpms-income': 'Add your college admission proof first',
+};
+
+// Restores presentation text that used to be computed from component state, which the frozen
+// catalog cannot carry (its `detail` strings are static). Purely a rendering concern — no
+// src/domain/ file is touched.
+function applyDisplayOverrides(requirements, state) {
+  return requirements.map((requirement) => {
+    let detail = requirement.detail;
+    let lockedBy = requirement.lockedBy;
+
+    if (requirement.id === 'bpms-birth' && requirement.status === 'processing') {
+      detail = 'Demo request submitted. The document itself is still processing.';
+    }
+    if (requirement.id === 'bpms-income' && state.selectedIncome) {
+      const chosen = requirement.options?.find((option) => option.id === state.selectedIncome)?.title;
+      if (chosen) detail = chosen;
+    }
+
+    if (requirement.status === 'locked') {
+      lockedBy = BPMS_LOCKED_HINTS[requirement.id] || requirement.lockedBy || '';
+    }
+
+    return { ...requirement, detail, lockedBy };
   });
+}
+
+function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
+  const program = getEntry(state.selectedProgram) || CATALOG[0];
+  const isBpms = program.id === 'ched-bpms';
+  const processing = state.birthRequest === 'paid' && !state.complete.includes('bpms-birth')
+    ? ['bpms-birth'] : [];
+  const requirements = applyDisplayOverrides(resolveJourney({
+    steps: program.journey.steps,
+    completed: state.complete,
+    processing,
+  }), state);
+  const progress = journeyProgress(requirements);
+  const completedCount = progress.done;
   const coreRequirements = requirements.filter((item) => item.status !== 'conditional');
-  const completedCount = coreRequirements.filter((item) => item.status === 'complete' || item.status === 'processing').length;
-  const progress = Math.round((completedCount / Math.max(coreRequirements.length, 1)) * 100);
   const next = requirements.find((item) => item.status === 'available');
-  const ProgramIcon = program.icon;
+  const ProgramIcon = iconFor(program.icon);
 
   const handleRequirement = (requirement) => {
     if (requirement.status !== 'available') return;
@@ -533,7 +405,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
 
       <section className="readiness-summary">
         <div><span className="section-kicker">YOUR READINESS PLAN</span><strong>{completedCount} of {coreRequirements.length} core steps moved</strong><p>Documents remain “processing” until the issuing agency releases them.</p></div>
-        <ProgressBar value={progress} label="Journey progress" />
+        <ProgressBar value={progress.percent} label="Journey progress" />
       </section>
 
       {next ? (
@@ -550,7 +422,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
           <p className="panel-intro">You do not have to get everything at once. eAbot unlocks the next sensible action.</p>
           <ol className="requirement-list">
             {requirements.map((requirement, index) => {
-              const Icon = requirement.icon;
+              const Icon = iconFor(requirement.icon);
               return (
                 <li key={requirement.id} className={`requirement-row ${requirement.status}`}>
                   <span className="requirement-number">{requirement.status === 'complete' ? <Check /> : index + 1}</span>
@@ -560,12 +432,12 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
                     <p>{requirement.detail}</p>
                     <span className="document-source">From: {requirement.source}</span>
                     {requirement.status === 'locked' && <span className="locked-note"><LockKeyhole />{requirement.lockedBy}</span>}
-                    {requirement.method === 'income' && requirement.status === 'available' && (
+                    {requirement.method === 'choice' && requirement.status === 'available' && (
                       <label className="branch-picker">
                         <span><ChevronDown /> Choose one accepted path</span>
                         <select value={state.selectedIncome} onChange={(event) => setState((current) => ({ ...current, selectedIncome: event.target.value }))}>
                           <option value="">Select a document</option>
-                          {INCOME_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.title}</option>)}
+                          {requirement.options.map((option) => <option key={option.id} value={option.id}>{option.title}</option>)}
                         </select>
                       </label>
                     )}
@@ -574,7 +446,7 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
                     )}
                   </div>
                   {requirement.status === 'available' && (
-                    <button className="row-action" disabled={requirement.method === 'income' && !state.selectedIncome} onClick={() => handleRequirement(requirement)}>
+                    <button className="row-action" disabled={requirement.method === 'choice' && !state.selectedIncome} onClick={() => handleRequirement(requirement)}>
                       {requirement.method === 'egov' ? 'Request demo' : requirement.method === 'assisted' ? 'Schedule demo' : 'Add document'}<ChevronRight />
                     </button>
                   )}
@@ -596,9 +468,9 @@ function RequirementsScreen({ state, setState, onNavigate, onOpenDocument }) {
 
 function DocumentScreen({ requirement, state, onBack, onPayment, onComplete }) {
   if (!requirement) return null;
-  const Icon = requirement.icon || FileText;
+  const Icon = iconFor(requirement.icon);
   const isEgov = requirement.method === 'egov';
-  const isIncome = requirement.method === 'income';
+  const isIncome = requirement.method === 'choice';
   return (
     <main className="focused-page screen-enter">
       <FocusHeader title="Requirement details" subtitle="Step-by-step" onBack={onBack} />
@@ -610,11 +482,11 @@ function DocumentScreen({ requirement, state, onBack, onPayment, onComplete }) {
           <p>{requirement.detail}</p>
         </div>
         <section className="detail-card">
-          <div className="detail-row"><span>Purpose</span><strong>{state.selectedProgram === 'bpms' ? 'Merit scholarship readiness' : 'Education assistance readiness'}</strong></div>
+          <div className="detail-row"><span>Purpose</span><strong>{state.selectedProgram === 'ched-bpms' ? 'Merit scholarship readiness' : 'Education assistance readiness'}</strong></div>
           <div className="detail-row"><span>Document source</span><strong>{requirement.source}</strong></div>
           <div className="detail-row"><span>Current status</span><StatusPill tone="blue">Ready to start</StatusPill></div>
           {isEgov && <div className="detail-row"><span>Demo service fee</span><strong>₱155.00 <small>sample only</small></strong></div>}
-          {isIncome && <div className="detail-row"><span>Selected path</span><strong>{INCOME_OPTIONS.find((item) => item.id === state.selectedIncome)?.title}</strong></div>}
+          {isIncome && <div className="detail-row"><span>Selected path</span><strong>{requirement.options?.find((item) => item.id === state.selectedIncome)?.title}</strong></div>}
         </section>
 
         {isEgov ? (
@@ -822,7 +694,12 @@ export default function App() {
     return () => window.clearTimeout(focusTimer);
   }, [screen]);
 
-  const requirements = useMemo(() => state.selectedProgram === 'bpms' ? getBpmsRequirements(state) : PROGRAM_REQUIREMENTS[state.selectedProgram] || [], [state]);
+  const requirements = useMemo(() => {
+    const program = getEntry(state.selectedProgram) || CATALOG[0];
+    const processing = state.birthRequest === 'paid' && !state.complete.includes('bpms-birth')
+      ? ['bpms-birth'] : [];
+    return applyDisplayOverrides(resolveJourney({ steps: program.journey.steps, completed: state.complete, processing }), state);
+  }, [state]);
 
   const navigate = (target) => {
     if (target === 'documents') {

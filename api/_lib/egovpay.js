@@ -121,14 +121,3 @@ export async function getDemoTransaction({ env, uuid }) {
     testMode: true,
   };
 }
-
-export function publicPaymentError(error) {
-  const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600 ? error.status : 500;
-  return {
-    status,
-    body: {
-      error: error?.message || 'Unable to contact eGovPay test mode.',
-      details: error?.details || undefined,
-    },
-  };
-}

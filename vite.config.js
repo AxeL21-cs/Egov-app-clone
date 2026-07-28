@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { createDemoTransaction, getDemoTransaction, publicPaymentError } from './api/_lib/egovpay.js';
+import { createDemoTransaction, getDemoTransaction } from './api/_lib/egovpay.js';
+import { publicError } from './api/_lib/errors.js';
 
 function localEgovPayApi(env) {
   return {
@@ -35,7 +36,7 @@ function localEgovPayApi(env) {
 
           return send(405, { error: 'Method not allowed.' });
         } catch (error) {
-          const result = publicPaymentError(error);
+          const result = publicError(error);
           return send(result.status, result.body);
         }
       });

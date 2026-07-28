@@ -1,4 +1,5 @@
-import { getDemoTransaction, publicPaymentError } from '../_lib/egovpay.js';
+import { getDemoTransaction } from '../_lib/egovpay.js';
+import { publicError } from '../_lib/errors.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -11,7 +12,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ transaction });
   } catch (error) {
-    const result = publicPaymentError(error);
+    const result = publicError(error);
     return res.status(result.status).json(result.body);
   }
 }
